@@ -1,0 +1,35 @@
+# Unity
+[Ll]ibrary/
+[Tt]emp/
+[Oo]bj/
+[Bb]uild/
+[Bb]Builds/
+[Ll]ogs/
+UserSettings/
+MemoryCaptures/
+
+# IDE
+.vscode/
+.idea/
+*.csproj
+*.sln
+*.user
+*.userprefs
+*.pidb
+*.booproj
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Crash / caches
+sysinfo.txt
+
+# Secrets / signing
+.env
+*.keystore
+*.jks
+
+# Unity generated packages / artifacts
+ExportedObj/
+.consulo/
