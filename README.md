@@ -285,7 +285,7 @@ Detalhes: [docs/avaliacao-seguranca.md](docs/avaliacao-seguranca.md)
 
 | Atividade | Responsável principal | Status |
 |---|---|---|
-| Organização do Git/GitHub | Khevyn + Jeovanni | 🚧 Em andamento |
+| Organização do Git/GitHub | Khevyn + Jeovanni | ✅ Concluído |
 | Preparação do ambiente de desenvolvimento | Equipe de desenvolvimento | 🚧 Em andamento |
 | Desenvolvimento da base de RA | Equipe de desenvolvimento | ⬜ Planejado |
 | Desenvolvimento das funcionalidades do MVP | Equipe de desenvolvimento | ⬜ Planejado |
