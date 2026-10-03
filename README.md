@@ -116,7 +116,7 @@ As tecnologias abaixo representam a **direção prevista** para o projeto. As ve
 
 | Tecnologia | Versão | Utilização |
 |---|---|---|
-| Unity | **A confirmar no projeto** | Desenvolvimento principal |
+| Unity | Unity 6.6 (6000.6.4f1) | Desenvolvimento principal |
 | C# | Compatível com a versão do Unity | Scripts da aplicação |
 | AR Foundation | **A confirmar no projeto** | Camada de abstração para RA |
 | Plugin XR de plataforma | **A confirmar** | Recursos de RA do dispositivo-alvo |
