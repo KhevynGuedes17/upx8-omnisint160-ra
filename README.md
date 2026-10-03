@@ -120,7 +120,7 @@ As tecnologias abaixo representam a **direção prevista** para o projeto. As ve
 | C# | Compatível com a versão do Unity | Scripts da aplicação |
 | AR Foundation | **A confirmar no projeto** | Camada de abstração para RA |
 | Plugin XR de plataforma | **A confirmar** | Recursos de RA do dispositivo-alvo |
-| Git | Versão local de cada integrante | Controle de versão |
+| Git | git version 2.51.0.windows.2 | Controle de versão |
 | GitHub | — | Hospedagem do código e documentação |
 
 > Não substituir “A confirmar” por versões estimadas. Registrar somente versões efetivamente utilizadas.
