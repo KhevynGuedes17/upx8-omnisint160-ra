@@ -118,10 +118,10 @@ As tecnologias abaixo representam a **direção prevista** para o projeto. As ve
 |---|---|---|
 | Unity | Unity 6.6 (6000.6.4f1) | Desenvolvimento principal |
 | C# | Compatível com a versão do Unity | Scripts da aplicação |
-| AR Foundation | **A confirmar no projeto** | Camada de abstração para RA |
-| Plugin XR de plataforma | **A confirmar** | Recursos de RA do dispositivo-alvo |
+| AR Foundation | 6.6.2| Camada de abstração para RA |
+| Plugin XR de plataforma | 6.6.2 | Recursos de RA do dispositivo-alvo |
 | Git | git version 2.51.0.windows.2 | Controle de versão |
-| GitHub | — | Hospedagem do código e documentação |
+| GitHub | Serviço remoto | Hospedagem do código e documentação |
 
 > Não substituir “A confirmar” por versões estimadas. Registrar somente versões efetivamente utilizadas.
 
