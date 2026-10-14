@@ -1,0 +1,24 @@
+{
+  "id": "demo-equipment-check",
+  "title": "Verificação do Equipamento Demo",
+  "steps": [
+    {
+      "id": 1,
+      "component": "A",
+      "title": "Verificar energia",
+      "instruction": "Observe o componente A destacado e confirme o indicador de energia."
+    },
+    {
+      "id": 2,
+      "component": "B",
+      "title": "Verificar proteção",
+      "instruction": "Observe o componente B destacado e confirme a proteção do módulo central."
+    },
+    {
+      "id": 3,
+      "component": "C",
+      "title": "Verificar saída",
+      "instruction": "Observe o componente C destacado e confirme o conector de saída."
+    }
+  ]
+}
