@@ -1,0 +1,2 @@
+C:\Users\felip\Documents\upx8-omnisint160-ra\PROJETO DE TESTE\Library\Bee\Android\Prj\IL2CPP\Gradle\unityLibrary\src\main\cpp\CMakeLists.txt
+C:\Users\felip\Documents\upx8-omnisint160-ra\PROJETO DE TESTE\Library\Bee\Android\Prj\IL2CPP\Gradle\unityLibrary\src\main\cpp\GameActivity\CMakeLists.txt
