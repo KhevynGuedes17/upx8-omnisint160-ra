@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.Rendering.Universal;
 using UnityEngine.XR.ARFoundation;
 using UnityEngine.XR.ARSubsystems;
 
@@ -9,7 +10,7 @@ namespace Facens.Test
     [RequireComponent(typeof(ARTrackedImageManager))]
     public sealed class TestProcedureController : MonoBehaviour
     {
-        const string TargetName = "TestEquipmentTarget";
+        const string TargetName = "TestEquipmentTarget"; // Nesse caso, este nome deve ser IGUAL ao ReferenceImage
         readonly Dictionary<string, Renderer> _componentRenderers = new();
         readonly Dictionary<string, Material> _componentMaterials = new();
 
@@ -71,7 +72,6 @@ namespace Facens.Test
 
         void SetTargetFound(bool found, ARTrackedImage image)
         {
-            TargetFound = found;
             if (found && image != null)
             {
                 _trackedImage = image;
@@ -85,6 +85,7 @@ namespace Facens.Test
                 if (_contentRoot != null) _contentRoot.SetActive(false);
                 StatusMessage = "Alvo perdido. Reposicione a camera para visualizar o equipamento.";
             }
+            TargetFound = found;
         }
 
         void EnsureContextualContent(Transform target)
@@ -112,7 +113,7 @@ namespace Facens.Test
             var tag = cube.AddComponent<TestComponentTag>();
             tag.componentId = id;
             var renderer = cube.GetComponent<Renderer>();
-            var material = new Material(Shader.Find("Standard"));
+            var material = renderer.material ? renderer.material : new Material(Shader.Find("Standard"));
             renderer.material = material;
             _componentRenderers[id] = renderer;
             _componentMaterials[id] = material;
