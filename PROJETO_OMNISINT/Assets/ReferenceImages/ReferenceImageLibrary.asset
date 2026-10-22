@@ -18,12 +18,42 @@ MonoBehaviour:
     m_Storage: []
   m_Images:
   - m_SerializedGuid:
-      m_GuidLow: 4829461113204926398
-      m_GuidHigh: 5893045830370842762
+      m_GuidLow: 5271013623689889183
+      m_GuidHigh: 7279586049501812392
     m_SerializedTextureGuid:
-      m_GuidLow: 16646541950998280384
-      m_GuidHigh: 5485777792887146603
-    m_Size: {x: 0.2, y: 0.13333334}
+      m_GuidLow: 460549182144376343
+      m_GuidHigh: 16355555955039172011
+    m_Size: {x: 0.2, y: 0.2}
     m_SpecifySize: 1
-    m_Name: TestEquipmentTarget
+    m_Name: target_1
+    m_Texture: {fileID: 0}
+  - m_SerializedGuid:
+      m_GuidLow: 5045899765814958390
+      m_GuidHigh: 712285622942375335
+    m_SerializedTextureGuid:
+      m_GuidLow: 5256891314174201069
+      m_GuidHigh: 17871421809822788715
+    m_Size: {x: 0.2, y: 0.2}
+    m_SpecifySize: 1
+    m_Name: target_2
+    m_Texture: {fileID: 0}
+  - m_SerializedGuid:
+      m_GuidLow: 5174127134655509011
+      m_GuidHigh: 14807030268181473982
+    m_SerializedTextureGuid:
+      m_GuidLow: 17110461081781121199
+      m_GuidHigh: 9920098072830177498
+    m_Size: {x: 0.2, y: 0.2}
+    m_SpecifySize: 1
+    m_Name: target_3
+    m_Texture: {fileID: 0}
+  - m_SerializedGuid:
+      m_GuidLow: 5023016652084660099
+      m_GuidHigh: 4580936444270838659
+    m_SerializedTextureGuid:
+      m_GuidLow: 16034139129444996224
+      m_GuidHigh: 15391580441974872171
+    m_Size: {x: 0.2, y: 0.2}
+    m_SpecifySize: 1
+    m_Name: target_4
     m_Texture: {fileID: 0}
