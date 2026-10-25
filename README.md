@@ -122,6 +122,12 @@ As tecnologias abaixo representam a **direção prevista** para o projeto. As ve
 | Plugin XR de plataforma | 6.6.2 | Recursos de RA do dispositivo-alvo |
 | Git | git version 2.51.0.windows.2 | Controle de versão |
 | GitHub | Serviço remoto | Hospedagem do código e documentação |
+| XR Core Utilities | 2.6.0 | Classes de utilidades para projetos XR |
+| XR Plugin Management | 4.7.0 | Gerenciamento de plugins XR |
+| Plugin OpenXR | 1.18.0 | Permite o uso de OpenXR no projeto Unity |
+| Input System | 1.20.1 | Sistema de entrada de ações do usuário |
+| Google ARCore XR Plugin | 6.6.2 | Integra o Google ARCore com a API XR do Unity |
+| Apple ARKit XR Plugin | 6.6.2 | Integra o Apple ARKit com a API XR do Unity |
 
 > Não substituir “A confirmar” por versões estimadas. Registrar somente versões efetivamente utilizadas.
 
@@ -287,7 +293,7 @@ Detalhes: [docs/avaliacao-seguranca.md](docs/avaliacao-seguranca.md)
 |---|---|---|
 | Organização do Git/GitHub | Khevyn + Jeovanni | ✅ Concluído |
 | Preparação do ambiente de desenvolvimento | Equipe de desenvolvimento | 🚧 Em andamento |
-| Desenvolvimento da base de RA | Equipe de desenvolvimento | ⬜ Planejado |
+| Desenvolvimento da base de RA | Equipe de desenvolvimento | ✅ Concluído |
 | Desenvolvimento das funcionalidades do MVP | Equipe de desenvolvimento | ⬜ Planejado |
 | Interface e integração | Equipe de desenvolvimento | ⬜ Planejado |
 | Testes técnicos e correções | Equipe | ⬜ Planejado |
