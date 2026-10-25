@@ -1,24 +1,32 @@
 {
-  "id": "demo-equipment-check",
-  "title": "Verificação do Equipamento Demo",
-  "steps": [
+  "procedures": [
     {
-      "id": 1,
-      "component": "A",
-      "title": "Verificar energia",
-      "instruction": "Observe o componente A destacado e confirme o indicador de energia."
+      "id": "proc_1",
+      "title": "Motor",
+      "target": "target_1",
+      "steps": [
+        { "id": 1, "component": "A", "title": "Verificar A", "instruction": "Inspecione o componente A." },
+        { "id": 2, "component": "B", "title": "Verificar B", "instruction": "Inspecione o componente B." },
+        { "id": 3, "component": "C", "title": "Verificar C", "instruction": "Inspecione o componente C." }
+      ]
     },
     {
-      "id": 2,
-      "component": "B",
-      "title": "Verificar proteção",
-      "instruction": "Observe o componente B destacado e confirme a proteção do módulo central."
+      "id": "proc_3",
+      "title": "Painel",
+      "target": "target_3",
+      "steps": [
+        { "id": 1, "component": "A", "title": "Chave geral", "instruction": "Confirme a chave geral desligada." },
+        { "id": 2, "component": "B", "title": "Fusiveis", "instruction": "Verifique os fusiveis." }
+      ]
     },
     {
-      "id": 3,
-      "component": "C",
-      "title": "Verificar saída",
-      "instruction": "Observe o componente C destacado e confirme o conector de saída."
+      "id": "proc_4",
+      "title": "Bomba",
+      "target": "target_4",
+      "steps": [
+        { "id": 1, "component": "A", "title": "Entrada", "instruction": "Verifique a valvula de entrada." },
+        { "id": 2, "component": "B", "title": "Saida", "instruction": "Verifique a valvula de saida." }
+      ]
     }
   ]
 }

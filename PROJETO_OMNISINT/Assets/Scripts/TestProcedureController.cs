@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
 using UnityEngine;
-using UnityEngine.Rendering.Universal;
 using UnityEngine.XR.ARFoundation;
 using UnityEngine.XR.ARSubsystems;
 
@@ -10,47 +9,124 @@ namespace Facens.Test
     [RequireComponent(typeof(ARTrackedImageManager))]
     public sealed class TestProcedureController : MonoBehaviour
     {
-        const string TargetName = "TestEquipmentTarget"; // Nesse caso, este nome deve ser IGUAL ao ReferenceImage
-        readonly Dictionary<string, Renderer> _componentRenderers = new();
-        readonly Dictionary<string, Material> _componentMaterials = new();
+        // Usado apenas se o JSON estiver no formato antigo (um unico procedimento sem "target").
+        const string LegacyTargetName = "TestEquipmentTarget";
+
+        readonly Dictionary<string, TestProcedureSession> _sessions = new(StringComparer.OrdinalIgnoreCase); // chave = nome da ReferenceImage
+        readonly List<TestProcedureSession> _ordered = new();
+        readonly Dictionary<TrackableId, string> _trackableTargets = new();
+        readonly HashSet<string> _warnedUnknown = new();
+        readonly Dictionary<TrackableId, TrackingState> _lastStates = new();
 
         ARTrackedImageManager _imageManager;
-        TestProcedureDefinition _procedure;
-        GameObject _contentRoot;
-        ARTrackedImage _trackedImage;
-        bool[] _completed;
-        int _activeStepIndex;
-        float _startedAt = -1f;
-        float _finishedAt = -1f;
+        TestProcedureSession _active;
 
-        public bool TargetFound { get; private set; }
-        public bool IsComplete => _finishedAt >= 0f;
-        public int ActiveStepIndex => _activeStepIndex;
-        public int StepCount => _procedure?.steps?.Length ?? 0;
-        public TestProcedureStep CurrentStep => StepCount == 0 ? null : _procedure.steps[Mathf.Clamp(_activeStepIndex, 0, StepCount - 1)];
-        public string ProcedureTitle => _procedure?.title ?? "Procedimento Test";
-        public string StatusMessage { get; private set; } = "Aponte a camera para o alvo Test.";
-        public float Progress => StepCount == 0 ? 0f : CompletedCount / (float)StepCount;
-        public int CompletedCount { get { var count = 0; if (_completed != null) foreach (var value in _completed) if (value) count++; return count; } }
-        public float ElapsedSeconds => _startedAt < 0f ? 0f : Mathf.Max(0f, (_finishedAt >= 0f ? _finishedAt : Time.realtimeSinceStartup) - _startedAt);
+        /// <summary>Procedimento em foco (o ultimo reconhecido, ou o tocado). Null se nenhuma ancora foi vista.</summary>
+        public TestProcedureSession Active => _active;
+        /// <summary>Nome da ultima ReferenceImage reconhecida que nao tem procedimento no JSON (diagnostico).</summary>
+        public string UnmatchedImage { get; private set; }
+        /// <summary>Estado do rastreamento do DISPOSITIVO (ARCore). Sem "OK", nenhuma imagem e detectada.</summary>
+        public string DeviceTrackingInfo => ARSession.state == ARSessionState.SessionTracking
+            ? "OK"
+            : $"{ARSession.state} ({ARSession.notTrackingReason})";
+        public IReadOnlyList<TestProcedureSession> Sessions => _ordered;
+        public bool AnyTargetFound { get { foreach (var s in _ordered) if (s.TargetFound) return true; return false; } }
 
         void Awake()
         {
             _imageManager = GetComponent<ARTrackedImageManager>();
-            LoadProcedure();
-            ResetProcedure();
+            LoadProcedures();
         }
 
-        void OnEnable() => _imageManager.trackablesChanged.AddListener(OnTrackedImagesChanged);
-        void OnDisable() => _imageManager.trackablesChanged.RemoveListener(OnTrackedImagesChanged);
+        void OnEnable()
+        {
+            _imageManager.trackablesChanged.AddListener(OnTrackedImagesChanged);
+            ARSession.stateChanged += OnSessionStateChanged;
+        }
 
-        void LoadProcedure()
+        void OnDisable()
+        {
+            _imageManager.trackablesChanged.RemoveListener(OnTrackedImagesChanged);
+            ARSession.stateChanged -= OnSessionStateChanged;
+        }
+
+        static void OnSessionStateChanged(ARSessionStateChangedEventArgs args) =>
+            Debug.Log($"[Test] ARSession state={args.state} notTrackingReason={ARSession.notTrackingReason}");
+
+        void OnDestroy()
+        {
+            foreach (var session in _ordered) session.Dispose();
+        }
+
+        void Start() => ValidateAgainstLibrary();
+
+        // Cruza os nomes da ReferenceImageLibrary com os "target" do JSON e avisa no Console.
+        void ValidateAgainstLibrary()
+        {
+            var library = _imageManager.referenceLibrary;
+            if (library == null)
+            {
+                Debug.LogError("[Test] ARTrackedImageManager sem ReferenceImageLibrary atribuida.");
+                return;
+            }
+
+            var libraryNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            for (var i = 0; i < library.count; i++)
+            {
+                var libName = library[i].name;
+                libraryNames.Add(libName);
+                var matched = _sessions.ContainsKey(libName);
+                var msg = $"[Test] Library[{i}] nome='{libName}' size={library[i].size} -> {(matched ? "procedimento OK" : "SEM procedimento no JSON")}";
+                if (matched) Debug.Log(msg); else Debug.LogWarning(msg);
+            }
+
+            foreach (var session in _ordered)
+                if (!libraryNames.Contains(session.Target))
+                    Debug.LogWarning($"[Test] Procedimento '{session.Title}' usa target '{session.Target}', que NAO existe na ReferenceImageLibrary.");
+        }
+
+        // ---------- Carregamento ----------
+
+        void LoadProcedures()
         {
             var asset = Resources.Load<TextAsset>("Test_procedure");
             if (asset == null) throw new InvalidOperationException("Assets/Resources/Test_procedure.json nao foi encontrado.");
-            _procedure = JsonUtility.FromJson<TestProcedureDefinition>(asset.text);
-            if (_procedure?.steps == null || _procedure.steps.Length == 0) throw new InvalidOperationException("Procedimento Test vazio ou invalido.");
+
+            var definitions = new List<TestProcedureDefinition>();
+            var collection = JsonUtility.FromJson<TestProcedureCollection>(asset.text);
+            if (collection?.procedures != null && collection.procedures.Length > 0)
+            {
+                definitions.AddRange(collection.procedures);
+            }
+            else
+            {
+                // Compatibilidade com o formato antigo (um procedimento na raiz do JSON).
+                var single = JsonUtility.FromJson<TestProcedureDefinition>(asset.text);
+                if (single?.steps != null && single.steps.Length > 0)
+                {
+                    if (string.IsNullOrEmpty(single.target)) single.target = LegacyTargetName;
+                    definitions.Add(single);
+                }
+            }
+
+            foreach (var definition in definitions)
+            {
+                if (string.IsNullOrEmpty(definition.target))
+                    throw new InvalidOperationException($"Procedimento '{definition.id}' sem campo 'target' (nome da ReferenceImage).");
+                if (definition.steps == null || definition.steps.Length == 0)
+                    throw new InvalidOperationException($"Procedimento '{definition.id}' sem etapas.");
+                if (_sessions.ContainsKey(definition.target))
+                    throw new InvalidOperationException($"Mais de um procedimento usa o target '{definition.target}'.");
+
+                var session = new TestProcedureSession(definition, transform);
+                _sessions.Add(definition.target, session);
+                _ordered.Add(session);
+            }
+
+            if (_ordered.Count == 0) throw new InvalidOperationException("Nenhum procedimento valido em Test_procedure.json.");
         }
+
+        // ---------- Rastreamento ----------
 
         void OnTrackedImagesChanged(ARTrackablesChangedEventArgs<ARTrackedImage> args)
         {
@@ -58,151 +134,75 @@ namespace Facens.Test
             foreach (var image in args.updated) HandleTrackedImage(image);
             foreach (var removed in args.removed)
             {
-                if (_trackedImage != null && removed.Key == _trackedImage.trackableId)
-                    SetTargetFound(false, null);
+                if (_trackableTargets.TryGetValue(removed.Key, out var target) && _sessions.TryGetValue(target, out var session))
+                    SetTargetFound(session, false, null);
+                _trackableTargets.Remove(removed.Key);
+                _lastStates.Remove(removed.Key);
             }
         }
 
         void HandleTrackedImage(ARTrackedImage image)
         {
-            if (image.referenceImage.name != TargetName) return;
-            var tracking = image.trackingState == TrackingState.Tracking;
-            SetTargetFound(tracking, image);
-        }
-
-        void SetTargetFound(bool found, ARTrackedImage image)
-        {
-            if (found && image != null)
+            var imageName = image.referenceImage.name;
+            if (!_lastStates.TryGetValue(image.trackableId, out var lastState) || lastState != image.trackingState)
             {
-                _trackedImage = image;
-                if (_startedAt < 0f) _startedAt = Time.realtimeSinceStartup;
-                EnsureContextualContent(image.transform);
-                _contentRoot.SetActive(true);
-                StatusMessage = IsComplete ? "Procedimento concluido." : $"Alvo reconhecido. Etapa {CurrentStep.id}: {CurrentStep.title}";
+                _lastStates[image.trackableId] = image.trackingState;
+                Debug.Log($"[Test] Imagem '{imageName}' trackingState={image.trackingState} (dispositivo: {DeviceTrackingInfo})");
             }
-            else
+            if (!_sessions.TryGetValue(imageName, out var session))
             {
-                if (_contentRoot != null) _contentRoot.SetActive(false);
-                StatusMessage = "Alvo perdido. Reposicione a camera para visualizar o equipamento.";
+                UnmatchedImage = imageName;
+                if (_warnedUnknown.Add(imageName))
+                    Debug.LogWarning($"[Test] ReferenceImage '{imageName}' reconhecida, mas nao possui procedimento no JSON (campo 'target').");
+                return;
             }
-            TargetFound = found;
+            _trackableTargets[image.trackableId] = imageName;
+            SetTargetFound(session, image.trackingState == TrackingState.Tracking, image);
         }
 
-        void EnsureContextualContent(Transform target)
+        void SetTargetFound(TestProcedureSession session, bool found, ARTrackedImage image)
         {
-            if (_contentRoot == null)
-            {
-                _contentRoot = new GameObject("Test_ContextualContent");
-                CreateComponent("A", new Vector3(-0.055f, 0.018f, 0f));
-                CreateComponent("B", new Vector3(0f, 0.018f, 0f));
-                CreateComponent("C", new Vector3(0.055f, 0.018f, 0f));
-            }
-            _contentRoot.transform.SetParent(target, false);
-            _contentRoot.transform.localPosition = Vector3.zero;
-            _contentRoot.transform.localRotation = Quaternion.identity;
-            RefreshVisuals();
+            var wasFound = session.TargetFound;
+            session.SetTracking(found, image != null ? image.transform : null);
+
+            if (found && !wasFound)
+                _active = session; // nova ancora reconhecida passa a ser o foco
+            else if (!found && wasFound && _active == session)
+                _active = MostRecentFound() ?? session; // cai para outra ancora visivel; se nao houver, mantem a atual
         }
 
-        void CreateComponent(string id, Vector3 position)
+        TestProcedureSession MostRecentFound()
         {
-            var cube = GameObject.CreatePrimitive(PrimitiveType.Cube);
-            cube.name = $"Test_Component_{id}";
-            cube.transform.SetParent(_contentRoot.transform, false);
-            cube.transform.localPosition = position;
-            cube.transform.localScale = new Vector3(0.035f, 0.016f, 0.035f);
-            var tag = cube.AddComponent<TestComponentTag>();
-            tag.componentId = id;
-            var renderer = cube.GetComponent<Renderer>();
-            var material = renderer.material ? renderer.material : new Material(Shader.Find("Standard"));
-            renderer.material = material;
-            _componentRenderers[id] = renderer;
-            _componentMaterials[id] = material;
-
-            var labelObject = new GameObject($"Label_{id}");
-            labelObject.transform.SetParent(cube.transform, false);
-            labelObject.transform.localPosition = new Vector3(0f, 1.25f, 0f);
-            labelObject.transform.localScale = Vector3.one * 0.7f;
-            var label = labelObject.AddComponent<TextMesh>();
-            label.text = id;
-            label.anchor = TextAnchor.MiddleCenter;
-            label.alignment = TextAlignment.Center;
-            label.fontSize = 42;
-            label.characterSize = 0.1f;
-            label.color = Color.white;
+            TestProcedureSession best = null;
+            foreach (var session in _ordered)
+                if (session.TargetFound && (best == null || session.LastFoundAt > best.LastFoundAt)) best = session;
+            return best;
         }
+
+        // ---------- Interacao ----------
 
         void Update()
         {
-            if (!TargetFound || IsComplete || Input.touchCount != 1) return;
+            if (!AnyTargetFound || Input.touchCount != 1) return;
             var touch = Input.GetTouch(0);
             if (touch.phase != TouchPhase.Ended || TestStatusOverlay.IsTouchOverOverlay(touch.position)) return;
             var camera = Camera.main;
             if (camera == null) return;
+
             var ray = camera.ScreenPointToRay(touch.position);
-            if (Physics.Raycast(ray, out var hit, 10f))
-            {
-                var tag = hit.collider.GetComponent<TestComponentTag>();
-                if (tag != null && CurrentStep != null && tag.componentId == CurrentStep.component)
-                    ConfirmCurrentStep();
-            }
+            if (!Physics.Raycast(ray, out var hit, 10f)) return;
+            var tag = hit.collider.GetComponent<TestComponentTag>();
+            if (tag == null || !_sessions.TryGetValue(tag.target, out var session)) return;
+            if (!session.TargetFound || session.IsComplete || tag.componentId != session.CurrentStep.component) return;
+
+            _active = session; // tocar em um componente de outra ancora visivel muda o foco
+            session.Confirm();
         }
 
-        public void ConfirmCurrentStep()
-        {
-            if (!TargetFound || IsComplete || CurrentStep == null) return;
-            _completed[_activeStepIndex] = true;
-            Debug.Log($"[Test] Etapa {CurrentStep.id} concluida: componente {CurrentStep.component}");
-            if (_activeStepIndex >= StepCount - 1)
-            {
-                _finishedAt = Time.realtimeSinceStartup;
-                StatusMessage = $"Procedimento concluido em {ElapsedSeconds:F0} s.";
-                Debug.Log($"[Test] Procedimento concluido em {ElapsedSeconds:F1} s.");
-            }
-            else
-            {
-                _activeStepIndex++;
-                StatusMessage = $"Etapa {CurrentStep.id}: {CurrentStep.title}";
-            }
-            RefreshVisuals();
-        }
-
-        public void PreviousStep()
-        {
-            if (IsComplete || _activeStepIndex <= 0) return;
-            _activeStepIndex--;
-            StatusMessage = $"Etapa {CurrentStep.id}: {CurrentStep.title}";
-            RefreshVisuals();
-        }
-
-        public void ResetProcedure()
-        {
-            _activeStepIndex = 0;
-            _completed = new bool[_procedure.steps.Length];
-            _finishedAt = -1f;
-            _startedAt = TargetFound ? Time.realtimeSinceStartup : -1f;
-            StatusMessage = TargetFound ? $"Etapa {CurrentStep.id}: {CurrentStep.title}" : "Aponte a camera para o alvo Test.";
-            RefreshVisuals();
-            Debug.Log("[Test] Procedimento reiniciado.");
-        }
-
-        void RefreshVisuals()
-        {
-            if (_procedure == null || _componentRenderers.Count == 0) return;
-            for (var i = 0; i < _procedure.steps.Length; i++)
-            {
-                var step = _procedure.steps[i];
-                if (!_componentRenderers.TryGetValue(step.component, out var renderer)) continue;
-                var active = !IsComplete && i == _activeStepIndex;
-                var done = _completed[i];
-                var color = done ? new Color(0.26f, 0.63f, 0.28f) : active ? new Color(0.95f, 0.49f, 0.18f) : new Color(0.32f, 0.38f, 0.43f);
-                _componentMaterials[step.component].color = color;
-                renderer.transform.localScale = active ? new Vector3(0.044f, 0.021f, 0.044f) : new Vector3(0.035f, 0.016f, 0.035f);
-            }
-        }
-
-        void OnDestroy()
-        {
-            foreach (var material in _componentMaterials.Values) if (material != null) Destroy(material);
-        }
+        // Os botoes do overlay atuam sobre o procedimento em foco.
+        public void ConfirmCurrentStep() => _active?.Confirm();
+        public void PreviousStep() => _active?.Previous();
+        public void ResetProcedure() => _active?.Reset();
+        public void ResetAll() { foreach (var session in _ordered) session.Reset(); }
     }
 }

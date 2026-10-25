@@ -10,6 +10,8 @@ using UnityEditor.XR.ARSubsystems;
 using UnityEditor.XR.Management;
 using UnityEditor.XR.Management.Metadata;
 using UnityEngine;
+using UnityEngine.InputSystem;
+using UnityEngine.InputSystem.XR;
 using UnityEngine.Rendering;
 using UnityEngine.XR.ARFoundation;
 using UnityEngine.XR.ARSubsystems;
@@ -22,10 +24,24 @@ namespace Facens.Test
     public static class ProjetoDeTesteSetup
     {
         const string ScenePath = "Assets/Scenes/ContextualAR.unity";
-        const string MarkerPath = "Assets/Markers/equipment-target.png";
         const string LibraryPath = "Assets/ReferenceImages/ReferenceImageLibrary.asset";
-        const string TargetName = "EquipmentTarget";
         const string SetupFlag = "Assets.Editor.SetupComplete.v1";
+
+        // Tabela de marcadores. O "name" e o que deve ser usado no campo "target" do Test_procedure.json.
+        // O tamanho (metros) so e aplicado quando a imagem e ADICIONADA a library; depois disso,
+        // ajuste pelo Inspector (o script nao sobrescreve mais valores existentes).
+        struct MarkerDef
+        {
+            public string name, path; public Vector2 size;
+            public MarkerDef(string name, string path, Vector2 size) { this.name = name; this.path = path; this.size = size; }
+        }
+
+        static readonly MarkerDef[] Markers =
+        {
+            new MarkerDef("target_1", "Assets/Markers/target_1.png", new Vector2(0.20f, 0.20f)),
+            new MarkerDef("target_3", "Assets/Markers/target_3.png", new Vector2(0.20f, 0.20f)),
+            new MarkerDef("target_4", "Assets/Markers/target_4.png", new Vector2(0.20f, 0.20f)),
+        };
 
         static ProjetoDeTesteSetup() => EditorApplication.delayCall += AutoSetup;
 
@@ -62,11 +78,12 @@ namespace Facens.Test
             errors += RequireObject<TestStatusOverlay>("TestStatusOverlay");
 
             var manager = UnityEngine.Object.FindAnyObjectByType<ARTrackedImageManager>();
-            if (manager == null || manager.referenceLibrary == null || manager.referenceLibrary.count != 1) { Debug.LogError("[RA OMNISINT160] Reference Image Library ausente ou invalida."); errors++; }
-            
+            if (manager == null || manager.referenceLibrary == null || manager.referenceLibrary.count < Markers.Length) { Debug.LogError($"[RA OMNISINT160] Reference Image Library ausente ou com menos de {Markers.Length} imagens."); errors++; }
+            else if (manager.requestedMaxNumberOfMovingImages < Markers.Length) Debug.LogWarning($"[RA OMNISINT160] requestedMaxNumberOfMovingImages = {manager.requestedMaxNumberOfMovingImages}: so essa quantidade de ancoras sera rastreada ao mesmo tempo.");
+
             var xr = GetAndroidXRSettings(); var arCore = false;
             if (xr?.Manager != null) foreach (var loader in xr.Manager.activeLoaders) if (loader != null && loader.GetType().FullName == "UnityEngine.XR.ARCore.ARCoreLoader") arCore = true;
-            
+
             if (!arCore) { Debug.LogError("[RA OMNISINT160] ARCore Loader nao habilitado."); errors++; }
             if (errors == 0) Debug.Log("[RA OMNISINT160] VALIDACAO OK: baseline estrutural pronto para Android ARCore.");
             else Debug.LogError($"[RA OMNISINT160] VALIDACAO FALHOU: {errors} problema(s).");
@@ -80,29 +97,54 @@ namespace Facens.Test
         [MenuItem("RA OMNISINT160/Recriar cena baseline (sobrescreve)")]
         public static void RecreateScene()
         {
-            if (!EditorUtility.DisplayDialog("RA OMNISINT160 - Recriar cena", "Sobrescrever a cena baseline?", "Recriar", "Cancelar")) return;
+            if (!EditorUtility.DisplayDialog("RA OMNISINT160 - Recriar cena", "Sobrescrever a cena baseline? (A ReferenceImageLibrary NAO sera alterada.)", "Recriar", "Cancelar")) return;
             if (AssetDatabase.LoadAssetAtPath<SceneAsset>(ScenePath) != null) AssetDatabase.DeleteAsset(ScenePath);
             EnsureScene(EnsureImageLibrary(), true); AssetDatabase.SaveAssets(); AssetDatabase.Refresh();
         }
 
+        // Nao destrutivo: nunca apaga o asset (o GUID e as referencias da cena se mantem),
+        // so adiciona marcadores que ainda nao estao na library e preserva nome/tamanho dos existentes.
         static XRReferenceImageLibrary EnsureImageLibrary()
         {
-            var existing = AssetDatabase.LoadAssetAtPath<XRReferenceImageLibrary>(LibraryPath);
-            if (existing != null && existing.count == 1) return existing;
             Directory.CreateDirectory("Assets/ReferenceImages");
-            if (existing != null) AssetDatabase.DeleteAsset(LibraryPath);
-            var texture = AssetDatabase.LoadAssetAtPath<Texture2D>(MarkerPath);
-            if (texture == null) throw new InvalidOperationException($"Marcador nao encontrado: {MarkerPath}");
-            var library = ScriptableObject.CreateInstance<XRReferenceImageLibrary>();
-            library.name = "TestReferenceImageLibrary";
-            AssetDatabase.CreateAsset(library, LibraryPath);
-            XRReferenceImageLibraryExtensions.Add(library);
-            XRReferenceImageLibraryExtensions.SetName(library, 0, TargetName);
-            XRReferenceImageLibraryExtensions.SetSpecifySize(library, 0, true);
-            XRReferenceImageLibraryExtensions.SetSize(library, 0, new Vector2(0.20f, 0.133333f));
-            XRReferenceImageLibraryExtensions.SetTexture(library, 0, texture, false);
-            EditorUtility.SetDirty(library); AssetDatabase.SaveAssets();
+            var library = AssetDatabase.LoadAssetAtPath<XRReferenceImageLibrary>(LibraryPath);
+            if (library == null)
+            {
+                library = ScriptableObject.CreateInstance<XRReferenceImageLibrary>();
+                library.name = "TestReferenceImageLibrary";
+                AssetDatabase.CreateAsset(library, LibraryPath);
+            }
+
+            var changed = false;
+            foreach (var marker in Markers)
+            {
+                var texture = AssetDatabase.LoadAssetAtPath<Texture2D>(marker.path);
+                if (texture == null) throw new InvalidOperationException($"Marcador nao encontrado: {marker.path}");
+                if (ContainsTexture(library, marker.path)) continue;
+
+                XRReferenceImageLibraryExtensions.Add(library);
+                var index = library.count - 1;
+                XRReferenceImageLibraryExtensions.SetName(library, index, marker.name);
+                XRReferenceImageLibraryExtensions.SetSpecifySize(library, index, true);
+                XRReferenceImageLibraryExtensions.SetSize(library, index, marker.size);
+                XRReferenceImageLibraryExtensions.SetTexture(library, index, texture, false);
+                changed = true;
+                Debug.Log($"[RA OMNISINT160] Imagem adicionada a library: {marker.name} ({marker.size.x} x {marker.size.y} m)");
+            }
+
+            if (changed) { EditorUtility.SetDirty(library); AssetDatabase.SaveAssets(); }
+
+            for (var i = 0; i < library.count; i++)
+                Debug.Log($"[RA OMNISINT160] Library[{i}] nome='{library[i].name}' specifySize={library[i].specifySize} size={library[i].size}");
             return library;
+        }
+
+        static bool ContainsTexture(XRReferenceImageLibrary library, string texturePath)
+        {
+            var guid = AssetDatabase.AssetPathToGUID(texturePath);
+            for (var i = 0; i < library.count; i++)
+                if (library[i].textureGuid.ToString("N") == guid) return true;
+            return false;
         }
 
         static void BuildAndroid(bool autoRun)
@@ -110,12 +152,12 @@ namespace Facens.Test
             ConfigureProject();
             if (!EditorUserBuildSettings.SwitchActiveBuildTarget(BuildTargetGroup.Android, BuildTarget.Android)) throw new InvalidOperationException("Nao foi possivel selecionar Android.");
             Directory.CreateDirectory("Builds");
-            var options = new BuildPlayerOptions { 
-                scenes = new[] { ScenePath }, 
-                locationPathName = "Builds/Test-Contextual-AR.apk", 
-                target = BuildTarget.Android, 
-                targetGroup = BuildTargetGroup.Android, 
-                options = autoRun ? BuildOptions.AutoRunPlayer : BuildOptions.None 
+            var options = new BuildPlayerOptions {
+                scenes = new[] { ScenePath },
+                locationPathName = "Builds/Test-Contextual-AR.apk",
+                target = BuildTarget.Android,
+                targetGroup = BuildTargetGroup.Android,
+                options = autoRun ? BuildOptions.AutoRunPlayer : BuildOptions.None
             };
             var report = BuildPipeline.BuildPlayer(options);
             if (report.summary.result != UnityEditor.Build.Reporting.BuildResult.Succeeded) throw new InvalidOperationException($"Build Android falhou: {report.summary.result}");
@@ -130,7 +172,7 @@ namespace Facens.Test
 
         static void ConfigureAndroid()
         {
-            PlayerSettings.companyName = "Facens"; 
+            PlayerSettings.companyName = "Facens";
             PlayerSettings.productName = "AR OMNISINT 160";
             PlayerSettings.SetApplicationIdentifier(BuildTargetGroup.Android, "edu.facens.Testcontextualar");
             PlayerSettings.defaultInterfaceOrientation = UIOrientation.Portrait;
@@ -156,7 +198,7 @@ namespace Facens.Test
             PlayerSettings.iOS.sdkVersion = iOSSdkVersion.DeviceSDK;
             PlayerSettings.SetScriptingBackend(NamedBuildTarget.iOS, ScriptingImplementation.IL2CPP);
             PlayerSettings.SetGraphicsAPIs(BuildTarget.iOS, new[] { GraphicsDeviceType.OpenGLES3 });
-            var perTarget = EnsureXRGeneralSettings(); 
+            var perTarget = EnsureXRGeneralSettings();
             var ios = perTarget.SettingsForBuildTarget(BuildTargetGroup.iOS);
             if (ios == null || ios.Manager == null) throw new InvalidOperationException("Falha nas configuracoes XR iOS.");
             ios.InitManagerOnStart = true;
@@ -171,8 +213,8 @@ namespace Facens.Test
                 }
             }
             if (!assigned && !present) throw new InvalidOperationException("Nao foi possivel habilitar ARCore Loader.");
-            var arCore = ARCoreSettings.GetOrCreateSettings(); 
-            arCore.requirement = ARCoreSettings.Requirement.Required; 
+            var arCore = ARCoreSettings.GetOrCreateSettings();
+            arCore.requirement = ARCoreSettings.Requirement.Required;
             EditorUtility.SetDirty(arCore);
         }
 
@@ -184,10 +226,10 @@ namespace Facens.Test
             if (!perTarget.HasManagerSettingsForBuildTarget(BuildTargetGroup.Android)) perTarget.CreateDefaultManagerSettingsForBuildTarget(BuildTargetGroup.Android);
             EditorUtility.SetDirty(perTarget); AssetDatabase.SaveAssets(); return perTarget;
         }
-        static XRGeneralSettings GetAndroidXRSettings() { 
-            XRGeneralSettingsPerBuildTarget p = null; 
-            EditorBuildSettings.TryGetConfigObject(XRGeneralSettings.settingsKey, out p); 
-            return p?.SettingsForBuildTarget(BuildTargetGroup.Android); 
+        static XRGeneralSettings GetAndroidXRSettings() {
+            XRGeneralSettingsPerBuildTarget p = null;
+            EditorBuildSettings.TryGetConfigObject(XRGeneralSettings.settingsKey, out p);
+            return p?.SettingsForBuildTarget(BuildTargetGroup.Android);
         }
 
         static void EnsureScene(XRReferenceImageLibrary library, bool force)
@@ -201,14 +243,21 @@ namespace Facens.Test
             var cameraObject = new GameObject("Main Camera"); cameraObject.tag = "MainCamera"; cameraObject.transform.SetParent(cameraOffset.transform, false);
             var camera = cameraObject.AddComponent<Camera>(); camera.clearFlags = CameraClearFlags.SolidColor; camera.backgroundColor = Color.black; camera.nearClipPlane = 0.01f; camera.farClipPlane = 30f;
             cameraObject.AddComponent<AudioListener>(); cameraObject.AddComponent<ARCameraManager>(); cameraObject.AddComponent<ARCameraBackground>();
-#pragma warning disable CS0618
-            cameraObject.AddComponent<ARPoseDriver>();
-#pragma warning restore CS0618
+            AddTrackedPoseDriver(cameraObject);
             SetXROriginReference(origin, "Camera", "m_Camera", camera); SetXROriginReference(origin, "CameraFloorOffsetObject", "m_CameraFloorOffsetObject", cameraOffset);
-            var imageManager = originObject.AddComponent<ARTrackedImageManager>(); imageManager.referenceLibrary = library; imageManager.requestedMaxNumberOfMovingImages = 1;
+            var imageManager = originObject.AddComponent<ARTrackedImageManager>(); imageManager.referenceLibrary = library; imageManager.requestedMaxNumberOfMovingImages = Markers.Length;
             originObject.AddComponent<TestProcedureController>();
             new GameObject("Test Status Overlay").AddComponent<TestStatusOverlay>();
             EditorSceneManager.SaveScene(scene, ScenePath); EnsureSceneInBuildSettings(); EditorSceneManager.OpenScene(ScenePath);
+        }
+
+        // Faz a camera virtual seguir o movimento real do aparelho (sem isso, o conteudo AR nao aparece alinhado).
+        static void AddTrackedPoseDriver(GameObject cameraObject)
+        {
+            var driver = cameraObject.AddComponent<TrackedPoseDriver>();
+            driver.positionInput = new InputActionProperty(new InputAction("Position", InputActionType.Value, "<HandheldARInputDevice>/devicePosition", expectedControlType: "Vector3"));
+            driver.rotationInput = new InputActionProperty(new InputAction("Rotation", InputActionType.Value, "<HandheldARInputDevice>/deviceRotation", expectedControlType: "Quaternion"));
+            driver.trackingStateInput = new InputActionProperty(new InputAction("Tracking State", InputActionType.Value, "<HandheldARInputDevice>/trackingState", expectedControlType: "Integer"));
         }
 
         static void SetXROriginReference(XROrigin origin, string propertyName, string serializedFieldName, UnityEngine.Object value)
@@ -223,4 +272,3 @@ namespace Facens.Test
     }
 }
 #endif
-
