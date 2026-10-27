@@ -27,6 +27,17 @@
         { "id": 1, "component": "A", "title": "Entrada", "instruction": "Verifique a valvula de entrada." },
         { "id": 2, "component": "B", "title": "Saida", "instruction": "Verifique a valvula de saida." }
       ]
+    },
+    {
+      "id": "proc_flower",
+      "title": "Ancora de teste",
+      "target": "flower_anchor",
+      "components": [
+        { "id": "Ball", "position": { "x": 0.0, "y": 0.04, "z": 0.0 }, "primitive": "sphere" }
+      ],
+      "steps": [
+        { "id": 1, "component": "Ball", "title": "Objeto 3D reconhecido", "instruction": "A esfera foi posicionada sobre a imagem de referencia." }
+      ]
     }
   ]
 }

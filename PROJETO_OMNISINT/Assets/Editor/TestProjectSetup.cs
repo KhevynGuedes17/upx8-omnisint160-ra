@@ -41,6 +41,7 @@ namespace Facens.Test
             new MarkerDef("target_1", "Assets/Markers/target_1.png", new Vector2(0.20f, 0.20f)),
             new MarkerDef("target_3", "Assets/Markers/target_3.png", new Vector2(0.20f, 0.20f)),
             new MarkerDef("target_4", "Assets/Markers/target_4.png", new Vector2(0.20f, 0.20f)),
+            new MarkerDef("flower_anchor", "Assets/Markers/flower-anchor.jpeg", new Vector2(0.20f, 0.267f)),
         };
 
         static ProjetoDeTesteSetup() => EditorApplication.delayCall += AutoSetup;
@@ -146,6 +147,8 @@ namespace Facens.Test
                 if (library[i].textureGuid.ToString("N") == guid) return true;
             return false;
         }
+
+        public static void BuildAndroid() => BuildAndroid(false);
 
         static void BuildAndroid(bool autoRun)
         {

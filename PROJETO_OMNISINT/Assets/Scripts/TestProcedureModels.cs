@@ -27,6 +27,7 @@ namespace Facens.Test
     {
         public string id;
         public Vector3 position; // Posicao local em relacao a imagem (metros)
+        public string primitive; // Opcional: "sphere" cria uma esfera em vez de um cubo
     }
 
     [Serializable]
@@ -199,20 +200,26 @@ namespace Facens.Test
 
         void CreateComponent(string id, Vector3 position)
         {
-            var cube = GameObject.CreatePrimitive(PrimitiveType.Cube);
-            cube.name = $"Test_Component_{id}";
-            cube.transform.SetParent(_contentRoot.transform, false);
-            cube.transform.localPosition = position;
-            cube.transform.localScale = NormalScale;
-            var tag = cube.AddComponent<TestComponentTag>();
+            var definition = FindComponentDefinition(id);
+            var primitive = string.Equals(definition?.primitive, "sphere", StringComparison.OrdinalIgnoreCase)
+                ? PrimitiveType.Sphere
+                : PrimitiveType.Cube;
+            var component = GameObject.CreatePrimitive(primitive);
+            component.name = $"Test_Component_{id}";
+            component.transform.SetParent(_contentRoot.transform, false);
+            component.transform.localPosition = position;
+            component.transform.localScale = primitive == PrimitiveType.Sphere
+                ? new Vector3(0.055f, 0.055f, 0.055f)
+                : NormalScale;
+            var tag = component.AddComponent<TestComponentTag>();
             tag.target = Target;
             tag.componentId = id;
-            var renderer = cube.GetComponent<Renderer>();
+            var renderer = component.GetComponent<Renderer>();
             _renderers[id] = renderer;
             _materials[id] = renderer.material; // instancia propria
 
             var labelObject = new GameObject($"Label_{id}");
-            labelObject.transform.SetParent(cube.transform, false);
+            labelObject.transform.SetParent(component.transform, false);
             labelObject.transform.localPosition = new Vector3(0f, 1.25f, 0f);
             labelObject.transform.localScale = Vector3.one * 0.7f;
             var label = labelObject.AddComponent<TextMesh>();
@@ -222,6 +229,14 @@ namespace Facens.Test
             label.fontSize = 42;
             label.characterSize = 0.1f;
             label.color = Color.white;
+        }
+
+        TestComponentDefinition FindComponentDefinition(string id)
+        {
+            if (Definition.components == null) return null;
+            foreach (var component in Definition.components)
+                if (string.Equals(component.id, id, StringComparison.OrdinalIgnoreCase)) return component;
+            return null;
         }
 
         void RefreshVisuals()
@@ -234,7 +249,10 @@ namespace Facens.Test
                 var active = !IsComplete && i == ActiveStepIndex;
                 var done = _completed[i];
                 _materials[step.component].color = done ? DoneColor : active ? ActiveColor : IdleColor;
-                renderer.transform.localScale = active ? ActiveScale : NormalScale;
+                var sphere = string.Equals(FindComponentDefinition(step.component)?.primitive, "sphere", StringComparison.OrdinalIgnoreCase);
+                renderer.transform.localScale = sphere
+                    ? (active ? Vector3.one * 0.066f : Vector3.one * 0.055f)
+                    : active ? ActiveScale : NormalScale;
             }
         }
 
