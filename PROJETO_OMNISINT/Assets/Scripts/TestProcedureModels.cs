@@ -184,7 +184,7 @@ namespace Facens.Test
             _contentRoot = new GameObject($"Test_Content_{Target}");
             foreach (var component in ResolveComponents()) {
                 Debug.Log("AIIIII " + component.id);
-                if (component.id != "Monitor de oxigênio") CreateComponent(component.id, component.position);
+                if (component.id != "Monitor de oxigênio" && component.id != "Emergência") CreateComponent(component.id, component.position);
                 else CreateModel(component.id, component.position);
             }
         }
@@ -207,13 +207,33 @@ namespace Facens.Test
         {
             Debug.Log("AIIIII " + id);
             var definition = FindComponentDefinition(id);
-            if (id != "Monitor de oxigênio") return;
-
-            var prefab = Resources.Load<GameObject>("Momentary Switch Red");
-            if (prefab == null)
+            GameObject prefab;
+            if (id == "Monitor de oxigênio")
             {
-                Debug.LogError("Prefab 'Momentary Switch Red' não encontrado em Resources.");
-                return;
+                prefab = Resources.Load<GameObject>("Momentary Switch Red");
+                if (prefab == null)
+                {
+                    Debug.LogError("Prefab 'Momentary Switch Red' não encontrado em Resources.");
+                    return;
+                }    
+            }
+            else if (id == "Emergência")
+            {
+                prefab = Resources.Load<GameObject>("Emergency Switch");
+                if (prefab == null)
+                {
+                    Debug.LogError("Prefab 'Emergency Switch' não encontrado em Resources.");
+                    return;
+                }    
+            }
+            else
+            {
+                prefab = Resources.Load<GameObject>("Emergency Switch");
+                if (prefab == null)
+                {
+                    Debug.LogError("Prefab 'Emergency Switch' não encontrado em Resources.");
+                    return;
+                }    
             }
 
             // Cria a instância na cena, já como filha do contentRoot

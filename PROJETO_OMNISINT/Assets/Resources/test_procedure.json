@@ -25,7 +25,7 @@
       "target": "target_4",
       "steps": [
         { "id": 1, "component": "A", "title": "Entrada", "instruction": "Verifique a valvula de entrada." },
-        { "id": 2, "component": "B", "title": "Saida", "instruction": "Verifique a valvula de saida." }
+        { "id": 2, "component": "Emergência", "title": "Botão de emergência", "instruction": "Para o funcionamento da máquina imediatamente." }
       ]
     },
     {
