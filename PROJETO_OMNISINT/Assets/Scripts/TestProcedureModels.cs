@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using TMPro;
 using UnityEngine;
 
 namespace Facens.Test
@@ -181,7 +182,11 @@ namespace Facens.Test
         {
             if (_contentRoot != null) return;
             _contentRoot = new GameObject($"Test_Content_{Target}");
-            foreach (var component in ResolveComponents()) CreateComponent(component.id, component.position);
+            foreach (var component in ResolveComponents()) {
+                Debug.Log("AIIIII " + component.id);
+                if (component.id != "Monitor de oxigênio") CreateComponent(component.id, component.position);
+                else CreateModel(component.id, component.position);
+            }
         }
 
         IEnumerable<TestComponentDefinition> ResolveComponents()
@@ -196,6 +201,52 @@ namespace Facens.Test
             for (var i = 0; i < ids.Count; i++)
                 list.Add(new TestComponentDefinition { id = ids[i], position = new Vector3((i - (ids.Count - 1) / 2f) * 0.055f, 0.018f, 0f) });
             return list;
+        }
+
+        void CreateModel(string id, Vector3 position)
+        {
+            Debug.Log("AIIIII " + id);
+            var definition = FindComponentDefinition(id);
+            if (id != "Monitor de oxigênio") return;
+
+            var prefab = Resources.Load<GameObject>("Momentary Switch Red");
+            if (prefab == null)
+            {
+                Debug.LogError("Prefab 'Momentary Switch Red' não encontrado em Resources.");
+                return;
+            }
+
+            // Cria a instância na cena, já como filha do contentRoot
+            var component = UnityEngine.Object.Instantiate(prefab, _contentRoot.transform, false);
+            component.name = $"Test_Component_{id}";
+            component.transform.localPosition = position;
+
+            var tag = component.AddComponent<TestComponentTag>();
+            tag.target = Target;
+            tag.componentId = id;
+
+            // O Renderer pode estar em um filho do prefab
+            var renderer = component.GetComponentInChildren<Renderer>();
+            if (renderer == null)
+            {
+                Debug.LogError("Nenhum Renderer encontrado no prefab.");
+                return;
+            }
+            _renderers[id] = renderer;
+            _materials[id] = renderer.material; // instância própria
+
+            var labelObject = new GameObject($"Label_{id}");
+            labelObject.transform.SetParent(component.transform, false);
+            labelObject.transform.localPosition = new Vector3(0f, 1.25f, 0f);
+            labelObject.transform.localScale = Vector3.one * 0.7f;
+
+            var label = labelObject.AddComponent<TextMesh>();
+            label.text = id;
+            label.anchor = TextAnchor.MiddleCenter;
+            label.alignment = TextAlignment.Center;
+            label.fontSize = 42;
+            label.characterSize = 0.1f;
+            label.color = Color.white;
         }
 
         void CreateComponent(string id, Vector3 position)

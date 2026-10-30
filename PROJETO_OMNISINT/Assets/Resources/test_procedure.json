@@ -2,12 +2,12 @@
   "procedures": [
     {
       "id": "proc_1",
-      "title": "Motor",
+      "title": "Painel principal",
       "target": "target_1",
       "steps": [
-        { "id": 1, "component": "A", "title": "Verificar A", "instruction": "Inspecione o componente A." },
-        { "id": 2, "component": "B", "title": "Verificar B", "instruction": "Inspecione o componente B." },
-        { "id": 3, "component": "C", "title": "Verificar C", "instruction": "Inspecione o componente C." }
+        { "id": 1, "component": "Monitor de oxigênio", "title": "Monitor de oxigênio", "instruction": "Sempre manter a concentração abaixo de 300 ppm" },
+        { "id": 2, "component": "Gas On", "title": "Chave de gás", "instruction": "Associado ao fornecimento de argônio após a evacuação da câmera" },
+        { "id": 3, "component": "Head Down", "title": "Chave lente", "instruction": "Chave para a elevação da lente antes da limpeza e recolocação após término"}
       ]
     },
     {
