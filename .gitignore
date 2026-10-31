@@ -33,3 +33,6 @@ sysinfo.txt
 # Unity generated packages / artifacts
 ExportedObj/
 .consulo/
+
+# User defined
+PROJETO_OMNISINT/Builds/*

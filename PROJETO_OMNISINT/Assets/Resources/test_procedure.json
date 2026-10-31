@@ -1,0 +1,43 @@
+{
+  "procedures": [
+    {
+      "id": "proc_1",
+      "title": "Painel principal",
+      "target": "target_1",
+      "steps": [
+        { "id": 1, "component": "Monitor de oxigênio", "title": "Monitor de oxigênio", "instruction": "Sempre manter a concentração abaixo de 300 ppm" },
+        { "id": 2, "component": "Gas On", "title": "Chave de gás", "instruction": "Associado ao fornecimento de argônio após a evacuação da câmera" },
+        { "id": 3, "component": "Head Down", "title": "Chave lente", "instruction": "Chave para a elevação da lente antes da limpeza e recolocação após término"}
+      ]
+    },
+    {
+      "id": "proc_3",
+      "title": "Painel",
+      "target": "target_3",
+      "steps": [
+        { "id": 1, "component": "A", "title": "Chave geral", "instruction": "Confirme a chave geral desligada." },
+        { "id": 2, "component": "B", "title": "Fusiveis", "instruction": "Verifique os fusiveis." }
+      ]
+    },
+    {
+      "id": "proc_4",
+      "title": "Bomba",
+      "target": "target_4",
+      "steps": [
+        { "id": 1, "component": "A", "title": "Entrada", "instruction": "Verifique a valvula de entrada." },
+        { "id": 2, "component": "Emergência", "title": "Botão de emergência", "instruction": "Para o funcionamento da máquina imediatamente." }
+      ]
+    },
+    {
+      "id": "proc_flower",
+      "title": "Ancora de teste",
+      "target": "flower_anchor",
+      "components": [
+        { "id": "Ball", "position": { "x": 0.0, "y": 0.04, "z": 0.0 }, "primitive": "sphere" }
+      ],
+      "steps": [
+        { "id": 1, "component": "Ball", "title": "Objeto 3D reconhecido", "instruction": "A esfera foi posicionada sobre a imagem de referencia." }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,59 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 848409ee8ba454f42a5ddff137688a27, type: 3}
+  m_Name: ReferenceImageLibrary
+  m_EditorClassIdentifier: Unity.XR.ARSubsystems::UnityEngine.XR.ARSubsystems.XRReferenceImageLibrary
+  m_GuidLow: 5290115036790936322
+  m_GuidHigh: 2225768402578502038
+  m_DataStore:
+    m_Storage: []
+  m_Images:
+  - m_SerializedGuid:
+      m_GuidLow: 5171373209876427907
+      m_GuidHigh: 69752177395279541
+    m_SerializedTextureGuid:
+      m_GuidLow: 5414637466337340947
+      m_GuidHigh: 6782927045120761096
+    m_Size: {x: 0.2, y: 0.2}
+    m_SpecifySize: 1
+    m_Name: target_1
+    m_Texture: {fileID: 0}
+  - m_SerializedGuid:
+      m_GuidLow: 4679289410575691637
+      m_GuidHigh: 17338464981765267127
+    m_SerializedTextureGuid:
+      m_GuidLow: 17110461081781121199
+      m_GuidHigh: 9920098072830177498
+    m_Size: {x: 0.2, y: 0.2}
+    m_SpecifySize: 1
+    m_Name: target_3
+    m_Texture: {fileID: 0}
+  - m_SerializedGuid:
+      m_GuidLow: 4710461592271393889
+      m_GuidHigh: 5708316229808436890
+    m_SerializedTextureGuid:
+      m_GuidLow: 15615209025975877154
+      m_GuidHigh: 10022369525182296216
+    m_Size: {x: 0.2, y: 0.267}
+    m_SpecifySize: 1
+    m_Name: flower_anchor
+    m_Texture: {fileID: 0}
+  - m_SerializedGuid:
+      m_GuidLow: 4963485001462607933
+      m_GuidHigh: 4739946305694758044
+    m_SerializedTextureGuid:
+      m_GuidLow: 10440531468070363205
+      m_GuidHigh: 3548969819675900281
+    m_Size: {x: 0.2, y: 0.2}
+    m_SpecifySize: 1
+    m_Name: target_4
+    m_Texture: {fileID: 0}
