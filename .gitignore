@@ -1,38 +1,60 @@
-# Unity
+# ===== Unity: pastas geradas =====
 [Ll]ibrary/
 [Tt]emp/
 [Oo]bj/
 [Bb]uild/
-[Bb]Builds/
+[Bb]uilds/
 [Ll]ogs/
 UserSettings/
 MemoryCaptures/
+[Rr]ecordings/
 
-# IDE
+# ===== Unity: build Android / Gradle / CMake =====
+.utmp/
+.gradle/
+.cxx/
+.externalNativeBuild/
+[Aa]ssets/Plugins/Android/*.tmp
+*.apk
+*.aab
+*.unitypackage
+*.app
+
+# ===== Unity: debug e artefatos =====
+*.pdb
+*.mdb
+*.opendb
+*.VC.db
+sysinfo.txt
+crashlytics-build.properties
+ExportedObj/
+.consulo/
+[Aa]ssets/AssetStoreTools*
+InitTestScene*.unity*
+
+# ===== IDE =====
+.vs/
 .vscode/
 .idea/
 *.csproj
 *.sln
+*.suo
 *.user
 *.userprefs
 *.pidb
 *.booproj
+*.swp
 
-# OS
+# ===== SO =====
 .DS_Store
 Thumbs.db
+desktop.ini
 
-# Crash / caches
-sysinfo.txt
+# ===== Logs e temporários =====
+*.log
+*.tmp
 
-# Secrets / signing
+# ===== Segredos / assinatura =====
 .env
 *.keystore
 *.jks
-
-# Unity generated packages / artifacts
-ExportedObj/
-.consulo/
-
-# User defined
-PROJETO_OMNISINT/Builds/*
