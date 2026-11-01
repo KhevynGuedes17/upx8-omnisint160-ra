@@ -163,7 +163,7 @@ namespace Facens.Test
         void SetTargetFound(TestProcedureSession session, bool found, ARTrackedImage image)
         {
             var wasFound = session.TargetFound;
-            session.SetTracking(found, image != null ? image.transform : null);
+            session.SetTracking(found, image.transform, image.referenceImage.size);
 
             if (found && !wasFound)
                 _active = session; // nova ancora reconhecida passa a ser o foco

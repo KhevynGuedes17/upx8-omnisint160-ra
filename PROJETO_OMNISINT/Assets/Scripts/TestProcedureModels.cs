@@ -27,8 +27,12 @@ namespace Facens.Test
     public sealed class TestComponentDefinition
     {
         public string id;
-        public Vector3 position; // Posicao local em relacao a imagem (metros)
-        public string primitive; // Opcional: "sphere" cria uma esfera em vez de um cubo
+        public Vector3 position;   // metros (modo antigo) ou apenas a altura Y quando useUv = true
+        public bool useUv;         // true: usa 'uv' em vez de position.x/z
+        public Vector2 uv;         // 0..1 sobre a imagem (u: esquerda->direita, v: topo->base)
+        public Vector3 rotation;   // graus (Euler) local à imagem
+        public float size;         // maior lado do modelo em metros; 0 = padrão
+        public string primitive;
     }
 
     [Serializable]
@@ -59,6 +63,8 @@ namespace Facens.Test
         readonly Transform _holder; // onde o conteudo fica "estacionado" quando a ancora some
         readonly Dictionary<string, Renderer> _renderers = new();
         readonly Dictionary<string, Material> _materials = new();
+        readonly Dictionary<string, Transform> _modelRoots = new();
+        readonly Dictionary<string, Vector3> _modelBaseScales = new();
         GameObject _contentRoot;
         bool[] _completed;
         float _startedAt = -1f;
@@ -95,9 +101,22 @@ namespace Facens.Test
         }
 
         // ---------- Rastreamento ----------
-
-        public void SetTracking(bool found, Transform anchor)
+        bool _lastLoggedFound;
+        bool _lastLoggedAnchor;
+        bool _loggedOnce;
+        public Vector2 ImageSize { get; private set; }
+        public void SetTracking(bool found, Transform anchor, Vector2 imageSize = default)
         {
+            if (imageSize != default) ImageSize = imageSize;
+            var hasAnchor = anchor != null;
+            if (!_loggedOnce || found != _lastLoggedFound || hasAnchor != _lastLoggedAnchor)
+            {
+                Debug.Log($"[Test] SetTracking '{Target}': found={found}, anchor={(hasAnchor ? anchor.name : "NULL")}");
+                _loggedOnce = true;
+                _lastLoggedFound = found;
+                _lastLoggedAnchor = hasAnchor;
+            }
+
             var wasFound = TargetFound;
             if (found && anchor != null)
             {
@@ -130,6 +149,16 @@ namespace Facens.Test
                 TargetFound = false;
                 if (wasFound) StatusMessage = $"{Title}: alvo perdido. Reposicione a camera.";
             }
+        }
+
+        // No ARFoundation, a imagem fica no plano XZ do anchor, com o eixo Y saindo dela.
+        Vector3 ResolvePosition(TestComponentDefinition def, Vector3 fallback)
+        {
+            if (def == null || !def.useUv || ImageSize.x <= 0f) return fallback;
+            return new Vector3(
+                (def.uv.x - 0.5f) * ImageSize.x,
+                def.position.y,
+                (0.5f - def.uv.y) * ImageSize.y);
         }
 
         // ---------- Procedimento ----------
@@ -182,10 +211,12 @@ namespace Facens.Test
         {
             if (_contentRoot != null) return;
             _contentRoot = new GameObject($"Test_Content_{Target}");
-            foreach (var component in ResolveComponents()) {
-                Debug.Log("AIIIII " + component.id);
-                if (component.id != "Monitor de oxigênio" && component.id != "Emergência") CreateComponent(component.id, component.position);
-                else CreateModel(component.id, component.position);
+            foreach (var component in ResolveComponents())
+            {
+                // Tenta o prefab em Resources/ProcedureN/<id>; se não existir, usa o primitivo.
+                var model = CreateModel(component, component.id, component.position);
+                if (!model) CreateComponent(component.id, component.position);
+                Debug.Log($"[Test] '{component.id}' -> {(model ? "PREFAB" : "PRIMITIVO")}");
             }
         }
 
@@ -203,62 +234,96 @@ namespace Facens.Test
             return list;
         }
 
-        void CreateModel(string id, Vector3 position)
+        string ProcedureFolder()
         {
-            Debug.Log("AIIIII " + id);
-            var definition = FindComponentDefinition(id);
-            GameObject prefab;
-            if (id == "Monitor de oxigênio")
+            var digits = new System.Text.StringBuilder();
+            foreach (var c in Definition.id ?? "") if (char.IsDigit(c)) digits.Append(c);
+            return digits.Length == 0 ? null : $"Procedure{digits}";
+        }
+        GameObject LoadPrefab(string id)
+        {
+            var folder = ProcedureFolder();
+            Debug.Log("Procedure Folder loaded: " + folder);
+            if (folder != null)
             {
-                prefab = Resources.Load<GameObject>("Momentary Switch Red");
-                if (prefab == null)
-                {
-                    Debug.LogError("Prefab 'Momentary Switch Red' não encontrado em Resources.");
-                    return;
-                }    
-            }
-            else if (id == "Emergência")
-            {
-                prefab = Resources.Load<GameObject>("Emergency Switch");
-                if (prefab == null)
-                {
-                    Debug.LogError("Prefab 'Emergency Switch' não encontrado em Resources.");
-                    return;
-                }    
-            }
-            else
-            {
-                prefab = Resources.Load<GameObject>("Emergency Switch");
-                if (prefab == null)
-                {
-                    Debug.LogError("Prefab 'Emergency Switch' não encontrado em Resources.");
-                    return;
-                }    
+                var prefab = Resources.Load<GameObject>($"{folder}/{id}");
+                Debug.Log($"Intended Prefab: {folder}/{id}");
+                if (prefab != null) return prefab;
             }
 
-            // Cria a instância na cena, já como filha do contentRoot
+            // Fallback: procura nas demais pastas ProcedureN (ex.: modelo compartilhado).
+            for (var i = 1; i <= 20; i++)
+            {
+                var prefab = Resources.Load<GameObject>($"Procedure{i}/{id}");
+                if (prefab != null) return prefab;
+            }
+            return null;
+        }
+        const float ModelTargetSize = 0.04f; // maior dimensao do modelo, em metros (4 cm)
+
+        static Bounds GetBounds(GameObject go)
+        {
+            var renderers = go.GetComponentsInChildren<Renderer>();
+            if (renderers.Length == 0) return new Bounds(go.transform.position, Vector3.zero);
+            var bounds = renderers[0].bounds;
+            for (var i = 1; i < renderers.Length; i++) bounds.Encapsulate(renderers[i].bounds);
+            return bounds;
+        }
+        bool CreateModel(TestComponentDefinition def, string id, Vector3 position)
+        {
+            var prefab = LoadPrefab(id);
+            if (prefab == null)
+            {
+                Debug.LogWarning($"[Test] Prefab '{id}' nao encontrado em Resources/{ProcedureFolder() ?? "ProcedureN"}. Usando primitivo.");
+                return false;
+            }
+
             var component = UnityEngine.Object.Instantiate(prefab, _contentRoot.transform, false);
             component.name = $"Test_Component_{id}";
-            component.transform.localPosition = position;
+            component.SetActive(true);
+
+            var def2 = def ?? FindComponentDefinition(id);
+            var targetPos = ResolvePosition(def2, position);
+            var targetSize = def2 != null && def2.size > 0f ? def2.size : ModelTargetSize;
+
+            component.transform.localRotation = def2 != null ? Quaternion.Euler(def2.rotation) : Quaternion.identity;
+            component.transform.localPosition = Vector3.zero;
+
+            var renderer = component.GetComponentInChildren<Renderer>();
+            if (renderer == null)
+            {
+                Debug.LogError($"[Test] Nenhum Renderer encontrado no prefab '{id}'.");
+                UnityEngine.Object.Destroy(component);
+                return false;
+            }
+
+            // Normaliza o tamanho
+            var bounds = GetBounds(component);
+            var maxSide = Mathf.Max(bounds.size.x, bounds.size.y, bounds.size.z);
+            if (maxSide > 0.0001f) component.transform.localScale *= targetSize / maxSide;
+
+            // Pivô no centro da BASE do modelo: ele assenta sobre a imagem
+            bounds = GetBounds(component);
+            var pivot = new Vector3(bounds.center.x, bounds.min.y, bounds.center.z);
+            var worldTarget = _contentRoot.transform.TransformPoint(targetPos);
+            component.transform.position += worldTarget - pivot;
+
+            Debug.Log($"[Test] Modelo '{id}' criado em {targetPos}. Tamanho final: {GetBounds(component).size}");
 
             var tag = component.AddComponent<TestComponentTag>();
             tag.target = Target;
             tag.componentId = id;
 
-            // O Renderer pode estar em um filho do prefab
-            var renderer = component.GetComponentInChildren<Renderer>();
-            if (renderer == null)
-            {
-                Debug.LogError("Nenhum Renderer encontrado no prefab.");
-                return;
-            }
             _renderers[id] = renderer;
-            _materials[id] = renderer.material; // instância própria
+            _materials[id] = renderer.material;
+            _modelRoots[id] = component.transform;
+            _modelBaseScales[id] = component.transform.localScale;
 
+            // Label no _contentRoot, para nao herdar a escala do modelo
             var labelObject = new GameObject($"Label_{id}");
-            labelObject.transform.SetParent(component.transform, false);
-            labelObject.transform.localPosition = new Vector3(0f, 1.25f, 0f);
-            labelObject.transform.localScale = Vector3.one * 0.7f;
+            labelObject.transform.SetParent(_contentRoot.transform, false);
+            labelObject.transform.localPosition = targetPos + Vector3.up * (targetSize * 1.2f);
+            labelObject.transform.localScale = Vector3.one * 0.05f;
 
             var label = labelObject.AddComponent<TextMesh>();
             label.text = id;
@@ -267,6 +332,7 @@ namespace Facens.Test
             label.fontSize = 42;
             label.characterSize = 0.1f;
             label.color = Color.white;
+            return true;
         }
 
         void CreateComponent(string id, Vector3 position)
@@ -320,6 +386,14 @@ namespace Facens.Test
                 var active = !IsComplete && i == ActiveStepIndex;
                 var done = _completed[i];
                 _materials[step.component].color = done ? DoneColor : active ? ActiveColor : IdleColor;
+
+                if (_modelRoots.TryGetValue(step.component, out var root))
+                {
+                    // Modelo 3D: destaca multiplicando a escala original do prefab.
+                    root.localScale = _modelBaseScales[step.component] * (active ? 1.25f : 1f);
+                    continue;
+                }
+
                 var sphere = string.Equals(FindComponentDefinition(step.component)?.primitive, "sphere", StringComparison.OrdinalIgnoreCase);
                 renderer.transform.localScale = sphere
                     ? (active ? Vector3.one * 0.066f : Vector3.one * 0.055f)
@@ -332,6 +406,8 @@ namespace Facens.Test
             foreach (var material in _materials.Values) if (material != null) UnityEngine.Object.Destroy(material);
             _materials.Clear();
             _renderers.Clear();
+            _modelRoots.Clear();
+            _modelBaseScales.Clear();
             if (_contentRoot != null) UnityEngine.Object.Destroy(_contentRoot);
         }
     }

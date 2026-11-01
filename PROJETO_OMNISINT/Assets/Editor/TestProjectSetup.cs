@@ -39,9 +39,7 @@ namespace Facens.Test
         static readonly MarkerDef[] Markers =
         {
             new MarkerDef("target_1", "Assets/Markers/target_1.png", new Vector2(0.20f, 0.20f)),
-            new MarkerDef("target_3", "Assets/Markers/target_3.png", new Vector2(0.20f, 0.20f)),
-            new MarkerDef("target_4", "Assets/Markers/target_4.png", new Vector2(0.20f, 0.20f)),
-            new MarkerDef("flower_anchor", "Assets/Markers/flower-anchor.jpeg", new Vector2(0.20f, 0.267f)),
+            new MarkerDef("target_2", "Assets/Markers/target_2.png", new Vector2(0.20f, 0.20f)),
         };
 
         static ProjetoDeTesteSetup() => EditorApplication.delayCall += AutoSetup;
