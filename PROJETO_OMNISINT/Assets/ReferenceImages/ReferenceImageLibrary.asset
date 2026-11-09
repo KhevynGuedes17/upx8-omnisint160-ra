@@ -28,26 +28,6 @@ MonoBehaviour:
     m_Name: target_1
     m_Texture: {fileID: 0}
   - m_SerializedGuid:
-      m_GuidLow: 4679289410575691637
-      m_GuidHigh: 17338464981765267127
-    m_SerializedTextureGuid:
-      m_GuidLow: 17110461081781121199
-      m_GuidHigh: 9920098072830177498
-    m_Size: {x: 0.2, y: 0.2}
-    m_SpecifySize: 1
-    m_Name: target_3
-    m_Texture: {fileID: 0}
-  - m_SerializedGuid:
-      m_GuidLow: 4710461592271393889
-      m_GuidHigh: 5708316229808436890
-    m_SerializedTextureGuid:
-      m_GuidLow: 15615209025975877154
-      m_GuidHigh: 10022369525182296216
-    m_Size: {x: 0.2, y: 0.267}
-    m_SpecifySize: 1
-    m_Name: flower_anchor
-    m_Texture: {fileID: 0}
-  - m_SerializedGuid:
       m_GuidLow: 4963485001462607933
       m_GuidHigh: 4739946305694758044
     m_SerializedTextureGuid:
@@ -55,5 +35,5 @@ MonoBehaviour:
       m_GuidHigh: 3548969819675900281
     m_Size: {x: 0.2, y: 0.2}
     m_SpecifySize: 1
-    m_Name: target_4
+    m_Name: target_2
     m_Texture: {fileID: 0}

@@ -4,39 +4,32 @@
       "id": "proc_1",
       "title": "Painel principal",
       "target": "target_1",
-      "steps": [
-        { "id": 1, "component": "Monitor de oxigênio", "title": "Monitor de oxigênio", "instruction": "Sempre manter a concentração abaixo de 300 ppm" },
-        { "id": 2, "component": "Gas On", "title": "Chave de gás", "instruction": "Associado ao fornecimento de argônio após a evacuação da câmera" },
-        { "id": 3, "component": "Head Down", "title": "Chave lente", "instruction": "Chave para a elevação da lente antes da limpeza e recolocação após término"}
-      ]
-    },
-    {
-      "id": "proc_3",
-      "title": "Painel",
-      "target": "target_3",
-      "steps": [
-        { "id": 1, "component": "A", "title": "Chave geral", "instruction": "Confirme a chave geral desligada." },
-        { "id": 2, "component": "B", "title": "Fusiveis", "instruction": "Verifique os fusiveis." }
-      ]
-    },
-    {
-      "id": "proc_4",
-      "title": "Bomba",
-      "target": "target_4",
-      "steps": [
-        { "id": 1, "component": "A", "title": "Entrada", "instruction": "Verifique a valvula de entrada." },
-        { "id": 2, "component": "Emergência", "title": "Botão de emergência", "instruction": "Para o funcionamento da máquina imediatamente." }
-      ]
-    },
-    {
-      "id": "proc_flower",
-      "title": "Ancora de teste",
-      "target": "flower_anchor",
       "components": [
-        { "id": "Ball", "position": { "x": 0.0, "y": 0.04, "z": 0.0 }, "primitive": "sphere" }
+        { "id": "Head Down", "useUv": true, "uv": { "x": 0.5, "y": 0.40 }, "position": { "x": 0, "y": 0.01, "z": 0 }, "rotation": { "x": -90, "y": 0, "z": 0 } }
       ],
       "steps": [
-        { "id": 1, "component": "Ball", "title": "Objeto 3D reconhecido", "instruction": "A esfera foi posicionada sobre a imagem de referencia." }
+        { "id": 1, "component": "Head Down", "title": "Head Down", "instruction": "Trava e destrava o cabeçote de impressão na posição inferior." }
+      ]
+    },
+    {
+      "id": "proc_2",
+      "title": "Painel inferior",
+      "target": "target_2",
+      "components": [
+        { "id": "Knob 'Servo On'",                "useUv": true, "uv": { "x": 0.3, "y": 0.3 }, "position": { "x": 0, "y": 0.01, "z": 0 }, "rotation": { "x": 90, "y": 0, "z": 0 } },
+        { "id": "LED industrial 'Servo Reset'",   "useUv": true, "uv": { "x": 0.55, "y": 0.3 }, "position": { "x": 0, "y": 0.01, "z": 0 }, "rotation": { "x": 90, "y": 0, "z": 0 } },
+        { "id": "Emergência",                     "useUv": true, "uv": { "x": 0.8, "y": 0.3 }, "position": { "x": 0, "y": 0.01, "z": 0 }, "rotation": { "x": 90, "y": 0, "z": 0 }, "size": 0.06 },
+        { "id": "Knob 'Power Feeder 1'",          "useUv": true, "uv": { "x": 0.35, "y": 0.60 }, "position": { "x": 0, "y": 0.01, "z": 0 }, "rotation": { "x": 90, "y": 0, "z": 0 } },
+        { "id": "Knob 'Power Feeder 2'",          "useUv": true, "uv": { "x": 0.65, "y": 0.60 }, "position": { "x": 0, "y": 0.01, "z": 0 }, "rotation": { "x": 90, "y": 0, "z": 0 } },
+        { "id": "LED industrial 'Axis Problem'",  "useUv": true, "uv": { "x": 0.5, "y": 0.85 }, "position": { "x": 0, "y": 0.01, "z": 0 }, "rotation": { "x": 90, "y": 0, "z": 0 } }
+      ],
+      "steps": [
+        { "id": 1, "component": "Knob 'Servo On'", "title": "Knob 'Servo On'", "instruction": "Mostra se o servomotor principal da OMNISINT 160 está ativado." },
+        { "id": 2, "component": "LED industrial 'Servo Reset'", "title": "LED industrial 'Servo Reset'", "instruction": "Mostra se o servomotor está em processo de reinicialização." },
+        { "id": 3, "component": "Emergência", "title": "Botão de emergência", "instruction": "Para o funcionamento da máquina imediatamente." },
+        { "id": 4, "component": "Knob 'Power Feeder 1'", "title": "Knob 'Power Feeder 1'", "instruction": "Alimentação do sistema. Possui três modos. Somente um deles deve se manter ligado (AUTO)." },
+        { "id": 5, "component": "Knob 'Power Feeder 2'", "title": "Knob 'Power Feeder 2'", "instruction": "Alimentação do sistema. Possui três modos. Somente um deles deve se manter ligado (AUTO)." },
+        { "id": 6, "component": "LED industrial 'Axis Problem'", "title": "LED industrial 'Axis Problem'", "instruction": "Aponta um problema no eixo do laser. Certifique-se de que não está aceso antes do funcionamento." }
       ]
     }
   ]
