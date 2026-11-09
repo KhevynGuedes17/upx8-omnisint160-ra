@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using TMPro;
 using UnityEngine;
 
@@ -18,7 +19,8 @@ namespace Facens.Test
     {
         public string id;
         public string title;
-        public string target;                         // Nome da ReferenceImage (deve ser IGUAL ao da library)
+        public string target;      // Nome da ReferenceImage (deve ser IGUAL ao da library)
+        public bool vertical;      // true: o eixo Y do conteudo aponta para o topo da imagem (imagem em parede)
         public TestComponentDefinition[] components;  // Opcional: se vazio, o layout e gerado automaticamente
         public TestProcedureStep[] steps;
     }
@@ -30,7 +32,10 @@ namespace Facens.Test
         public Vector3 position;   // metros (modo antigo) ou apenas a altura Y quando useUv = true
         public bool useUv;         // true: usa 'uv' em vez de position.x/z
         public Vector2 uv;         // 0..1 sobre a imagem (u: esquerda->direita, v: topo->base)
-        public Vector3 rotation;   // graus (Euler) local à imagem
+        // Rotacao do modelo em graus (Euler), aplicada POR CIMA da orientacao original do prefab.
+        // Eixos de referencia (a imagem "deitada"): +Y sai da imagem em direcao a camera,
+        // +Z aponta para o topo da imagem, +X para a direita. (0,0,0) = prefab como importado.
+        public Vector3 rotation;
         public float size;         // maior lado do modelo em metros; 0 = padrão
         public string primitive;
     }
@@ -50,6 +55,24 @@ namespace Facens.Test
         public string componentId;
     }
 
+    /// <summary>Mantem o texto virado para a camera (e com o topo alinhado ao topo da tela), independente da orientacao da imagem/modelo.</summary>
+    public sealed class TestLabelBillboard : MonoBehaviour
+    {
+        Transform _cam;
+
+        void LateUpdate()
+        {
+            if (_cam == null)
+            {
+                var cam = Camera.main;
+                if (cam == null) return;
+                _cam = cam.transform;
+            }
+            // TextMesh le-se olhando ao longo de +Z do proprio objeto: copiar a rotacao da camera o deixa de frente e em pe.
+            transform.rotation = _cam.rotation;
+        }
+    }
+
     // ---------- Estado + visual de UMA ancora ----------
 
     public sealed class TestProcedureSession
@@ -65,6 +88,7 @@ namespace Facens.Test
         readonly Dictionary<string, Material> _materials = new();
         readonly Dictionary<string, Transform> _modelRoots = new();
         readonly Dictionary<string, Vector3> _modelBaseScales = new();
+        readonly Dictionary<string, GameObject> _labels = new(); // NOVO
         GameObject _contentRoot;
         bool[] _completed;
         float _startedAt = -1f;
@@ -117,6 +141,7 @@ namespace Facens.Test
                 _lastLoggedAnchor = hasAnchor;
             }
 
+
             var wasFound = TargetFound;
             if (found && anchor != null)
             {
@@ -126,7 +151,9 @@ namespace Facens.Test
                 {
                     t.SetParent(anchor, false);
                     t.localPosition = Vector3.zero;
-                    t.localRotation = Quaternion.identity;
+                    t.localRotation = Definition.vertical
+                        ? Quaternion.Euler(90f, 0f, 0f)   // Y do conteúdo -> topo da imagem
+                        : Quaternion.identity;
                 }
                 _contentRoot.SetActive(true);
                 TargetFound = true;
@@ -218,6 +245,7 @@ namespace Facens.Test
                 if (!model) CreateComponent(component.id, component.position);
                 Debug.Log($"[Test] '{component.id}' -> {(model ? "PREFAB" : "PRIMITIVO")}");
             }
+            RefreshVisuals(); // NOVO: garante que os rótulos já nasçam no estado certo
         }
 
         IEnumerable<TestComponentDefinition> ResolveComponents()
@@ -277,7 +305,7 @@ namespace Facens.Test
                 Debug.LogWarning($"[Test] Prefab '{id}' nao encontrado em Resources/{ProcedureFolder() ?? "ProcedureN"}. Usando primitivo.");
                 return false;
             }
-
+            
             var component = UnityEngine.Object.Instantiate(prefab, _contentRoot.transform, false);
             component.name = $"Test_Component_{id}";
             component.SetActive(true);
@@ -286,7 +314,9 @@ namespace Facens.Test
             var targetPos = ResolvePosition(def2, position);
             var targetSize = def2 != null && def2.size > 0f ? def2.size : ModelTargetSize;
 
-            component.transform.localRotation = def2 != null ? Quaternion.Euler(def2.rotation) : Quaternion.identity;
+            // Compoe com a rotacao propria do prefab (FBX/CAD costumam trazer rotacao no root) em vez de sobrescreve-la.
+            var extraRotation = def2 != null ? Quaternion.Euler(def2.rotation) : Quaternion.identity;
+            component.transform.localRotation = extraRotation * prefab.transform.localRotation;
             component.transform.localPosition = Vector3.zero;
 
             var renderer = component.GetComponentInChildren<Renderer>();
@@ -320,10 +350,18 @@ namespace Facens.Test
             _modelBaseScales[id] = component.transform.localScale;
 
             // Label no _contentRoot, para nao herdar a escala do modelo
+            CreateLabel(id, targetPos + Vector3.up * (targetSize * 1.2f));
+            return true;
+        }
+
+        // Texto sempre filho do _contentRoot (nunca do modelo): nao herda escala/rotacao e acompanha a camera via billboard.
+        void CreateLabel(string id, Vector3 localPosition)
+        {
             var labelObject = new GameObject($"Label_{id}");
             labelObject.transform.SetParent(_contentRoot.transform, false);
-            labelObject.transform.localPosition = targetPos + Vector3.up * (targetSize * 1.2f);
+            labelObject.transform.localPosition = localPosition;
             labelObject.transform.localScale = Vector3.one * 0.05f;
+            labelObject.AddComponent<TestLabelBillboard>();
 
             var label = labelObject.AddComponent<TextMesh>();
             label.text = id;
@@ -332,7 +370,7 @@ namespace Facens.Test
             label.fontSize = 42;
             label.characterSize = 0.1f;
             label.color = Color.white;
-            return true;
+            _labels[id] = labelObject;
         }
 
         void CreateComponent(string id, Vector3 position)
@@ -344,7 +382,8 @@ namespace Facens.Test
             var component = GameObject.CreatePrimitive(primitive);
             component.name = $"Test_Component_{id}";
             component.transform.SetParent(_contentRoot.transform, false);
-            component.transform.localPosition = position;
+            var resolved = ResolvePosition(definition, position);
+            component.transform.localPosition = resolved;
             component.transform.localScale = primitive == PrimitiveType.Sphere
                 ? new Vector3(0.055f, 0.055f, 0.055f)
                 : NormalScale;
@@ -355,17 +394,7 @@ namespace Facens.Test
             _renderers[id] = renderer;
             _materials[id] = renderer.material; // instancia propria
 
-            var labelObject = new GameObject($"Label_{id}");
-            labelObject.transform.SetParent(component.transform, false);
-            labelObject.transform.localPosition = new Vector3(0f, 1.25f, 0f);
-            labelObject.transform.localScale = Vector3.one * 0.7f;
-            var label = labelObject.AddComponent<TextMesh>();
-            label.text = id;
-            label.anchor = TextAnchor.MiddleCenter;
-            label.alignment = TextAlignment.Center;
-            label.fontSize = 42;
-            label.characterSize = 0.1f;
-            label.color = Color.white;
+            CreateLabel(id, resolved + Vector3.up * 0.04f);
         }
 
         TestComponentDefinition FindComponentDefinition(string id)
@@ -379,6 +408,10 @@ namespace Facens.Test
         void RefreshVisuals()
         {
             if (_renderers.Count == 0) return;
+
+            foreach (var l in _labels.Values) if (l != null) l.SetActive(false);
+            if (!IsComplete && _labels.TryGetValue(CurrentStep.component, out var activeLabel) && activeLabel != null)
+                activeLabel.SetActive(true);
             for (var i = 0; i < Definition.steps.Length; i++)
             {
                 var step = Definition.steps[i];
@@ -408,6 +441,7 @@ namespace Facens.Test
             _renderers.Clear();
             _modelRoots.Clear();
             _modelBaseScales.Clear();
+            _labels.Clear();
             if (_contentRoot != null) UnityEngine.Object.Destroy(_contentRoot);
         }
     }
